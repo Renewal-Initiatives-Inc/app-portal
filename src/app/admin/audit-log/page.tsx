@@ -79,12 +79,14 @@ export default async function AuditLogPage({ searchParams }: AuditLogPageProps) 
         <AuditLogTable logs={auditData.logs} />
       </Suspense>
 
-      <AuditLogPagination
-        currentPage={page}
-        totalPages={totalPages}
-        totalItems={auditData.total}
-        pageSize={PAGE_SIZE}
-      />
+      <Suspense fallback={null}>
+        <AuditLogPagination
+          currentPage={page}
+          totalPages={totalPages}
+          totalItems={auditData.total}
+          pageSize={PAGE_SIZE}
+        />
+      </Suspense>
     </div>
   );
 }
