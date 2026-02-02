@@ -1,5 +1,5 @@
 import { db } from '@/lib/db';
-import { apps } from '@/lib/db/schema';
+import { apps, auditLogs } from '@/lib/db/schema';
 import { filterAuthorizedApps } from '@/lib/permissions';
 import { asc, eq, ne, and } from 'drizzle-orm';
 
@@ -99,8 +99,16 @@ export async function updateApp(
 
 /**
  * Delete an app by ID
+ * First nullifies any audit log references to avoid foreign key constraint violations
  */
 export async function deleteApp(id: string): Promise<boolean> {
+  // First, nullify appId references in audit_logs to avoid FK constraint
+  await db
+    .update(auditLogs)
+    .set({ appId: null })
+    .where(eq(auditLogs.appId, id));
+
+  // Now delete the app
   const results = await db.delete(apps).where(eq(apps.id, id)).returning();
   return results.length > 0;
 }
