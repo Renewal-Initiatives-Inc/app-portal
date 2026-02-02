@@ -32,7 +32,6 @@ const navItems = [
     href: '/admin/audit-log',
     label: 'Audit Log',
     icon: FileText,
-    disabled: true, // Phase 6
   },
 ];
 
@@ -52,19 +51,6 @@ export function AdminNav() {
         const Icon = item.icon;
         const active = isActive(item.href, item.exact);
 
-        if (item.disabled) {
-          return (
-            <div
-              key={item.href}
-              className="flex items-center gap-3 rounded-md px-3 py-2 text-sm text-muted-foreground opacity-50 cursor-not-allowed"
-              title="Coming soon"
-            >
-              <Icon className="h-4 w-4" />
-              <span>{item.label}</span>
-            </div>
-          );
-        }
-
         return (
           <Link
             key={item.href}
@@ -75,7 +61,7 @@ export function AdminNav() {
                 ? 'bg-primary text-primary-foreground'
                 : 'text-muted-foreground hover:bg-muted hover:text-foreground'
             )}
-            data-testid={`nav-${item.label.toLowerCase()}`}
+            data-testid={`nav-${item.label.toLowerCase().replace(' ', '-')}`}
           >
             <Icon className="h-4 w-4" />
             <span>{item.label}</span>

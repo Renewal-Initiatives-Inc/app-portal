@@ -4,8 +4,18 @@ import { useSession } from 'next-auth/react';
 import { SignOutButton } from '@/components/sign-out-button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
+import { NotificationDropdown } from '@/components/admin/notification-dropdown';
+import type { Notification } from '@/lib/db/notifications';
 
-export function AdminHeader() {
+interface AdminHeaderProps {
+  notifications?: Notification[];
+  unreadCount?: number;
+}
+
+export function AdminHeader({
+  notifications = [],
+  unreadCount = 0,
+}: AdminHeaderProps) {
   const { data: session } = useSession();
 
   const initials = session?.user?.name
@@ -31,6 +41,10 @@ export function AdminHeader() {
         </div>
 
         <div className="flex items-center gap-4">
+          <NotificationDropdown
+            notifications={notifications}
+            unreadCount={unreadCount}
+          />
           <div className="flex items-center gap-3">
             <Avatar className="h-8 w-8">
               <AvatarFallback className="bg-primary text-primary-foreground text-xs">

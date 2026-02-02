@@ -11,6 +11,7 @@ import {
   isSlugUnique,
   getAppById,
 } from '@/lib/db/apps';
+import { logAuditEvent, AUDIT_ACTIONS } from '@/lib/db/audit-logs';
 
 // Validation schemas
 const appSchema = z.object({
@@ -43,6 +44,8 @@ export type ActionResult = {
 async function verifyAdminAccess(): Promise<{
   authorized: boolean;
   error?: string;
+  userId?: string;
+  userEmail?: string;
 }> {
   const session = await auth();
 
@@ -55,7 +58,11 @@ async function verifyAdminAccess(): Promise<{
     return { authorized: false, error: 'Admin access required' };
   }
 
-  return { authorized: true };
+  return {
+    authorized: true,
+    userId: session.user.id,
+    userEmail: session.user.email || 'unknown',
+  };
 }
 
 export async function createAppAction(formData: FormData): Promise<ActionResult> {
@@ -93,13 +100,21 @@ export async function createAppAction(formData: FormData): Promise<ActionResult>
   }
 
   try {
-    await createApp({
+    const app = await createApp({
       name: result.data.name,
       slug: result.data.slug,
       description: result.data.description,
       appUrl: result.data.appUrl,
       iconUrl: result.data.iconUrl || null,
     });
+
+    // Log audit event
+    await logAuditEvent(
+      accessCheck.userId!,
+      accessCheck.userEmail!,
+      AUDIT_ACTIONS.APP_CREATED,
+      app.id
+    );
 
     revalidatePath('/admin/apps');
     revalidatePath('/admin');
@@ -164,6 +179,14 @@ export async function updateAppAction(
       iconUrl: result.data.iconUrl || null,
     });
 
+    // Log audit event
+    await logAuditEvent(
+      accessCheck.userId!,
+      accessCheck.userEmail!,
+      AUDIT_ACTIONS.APP_UPDATED,
+      id
+    );
+
     revalidatePath('/admin/apps');
     revalidatePath('/admin');
     revalidatePath('/');
@@ -192,6 +215,14 @@ export async function deleteAppAction(id: string): Promise<ActionResult> {
     if (!deleted) {
       return { success: false, error: 'Failed to delete app' };
     }
+
+    // Log audit event (appId will be null since app is deleted, but we can log it anyway)
+    await logAuditEvent(
+      accessCheck.userId!,
+      accessCheck.userEmail!,
+      AUDIT_ACTIONS.APP_DELETED,
+      null // App no longer exists
+    );
 
     revalidatePath('/admin/apps');
     revalidatePath('/admin');

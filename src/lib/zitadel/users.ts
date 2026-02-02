@@ -274,3 +274,12 @@ export async function getAdminCount(): Promise<number> {
   const users = await listUsers();
   return users.filter(u => u.isAdmin).length;
 }
+
+/**
+ * Get all admin user IDs
+ * Used for sending notifications to admins
+ */
+export async function getAdminUserIds(): Promise<string[]> {
+  const users = await listUsers();
+  return users.filter(u => u.isAdmin).map(u => u.id);
+}

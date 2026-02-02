@@ -1,14 +1,59 @@
 import Link from 'next/link';
 import { getAllApps } from '@/lib/db/apps';
 import { getUserCount, isZitadelManagementConfigured } from '@/lib/zitadel';
+import { getAuditLogCount, getRecentAuditLogs } from '@/lib/db/audit-logs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { AppWindow, Plus, Users, FileText, UserPlus } from 'lucide-react';
 
+/**
+ * Format date/time for display
+ */
+function formatDateTime(date: Date): string {
+  return new Intl.DateTimeFormat('en-US', {
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  }).format(date);
+}
+
+/**
+ * Get initials from email
+ */
+function getInitials(email: string): string {
+  const parts = email.split('@')[0].split(/[._-]/);
+  if (parts.length >= 2) {
+    return (parts[0][0] + parts[1][0]).toUpperCase();
+  }
+  return email.slice(0, 2).toUpperCase();
+}
+
+/**
+ * Map action to human-readable label
+ */
+function getActionLabel(action: string): string {
+  const actionMap: Record<string, string> = {
+    app_access: 'accessed app',
+    app_created: 'created app',
+    app_updated: 'updated app',
+    app_deleted: 'deleted app',
+    user_invited: 'invited user',
+    user_deactivated: 'deactivated user',
+    user_reactivated: 'reactivated user',
+    permissions_updated: 'updated permissions',
+  };
+  return actionMap[action] || action;
+}
+
 export default async function AdminDashboard() {
-  const [apps, userCount] = await Promise.all([
+  const [apps, userCount, auditCount, recentActivity] = await Promise.all([
     getAllApps(),
     isZitadelManagementConfigured() ? getUserCount() : 0,
+    getAuditLogCount(),
+    getRecentAuditLogs(5),
   ]);
   const appCount = apps.length;
   const zitadelConfigured = isZitadelManagementConfigured();
@@ -58,7 +103,7 @@ export default async function AdminDashboard() {
           </CardContent>
         </Card>
 
-        <Card className="opacity-50" data-testid="stat-audit">
+        <Card data-testid="stat-audit">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
               Audit Events
@@ -66,9 +111,9 @@ export default async function AdminDashboard() {
             <FileText className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">—</div>
+            <div className="text-3xl font-bold">{auditCount}</div>
             <p className="text-xs text-muted-foreground mt-1">
-              Coming in Phase 6
+              Events logged
             </p>
           </CardContent>
         </Card>
@@ -104,6 +149,59 @@ export default async function AdminDashboard() {
               View All Users
             </Link>
           </Button>
+        </CardContent>
+      </Card>
+
+      {/* Recent Activity */}
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle className="text-lg">Recent Activity</CardTitle>
+          <Button variant="ghost" size="sm" asChild>
+            <Link href="/admin/audit-log">View all</Link>
+          </Button>
+        </CardHeader>
+        <CardContent>
+          {recentActivity.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-4 text-center">
+              No recent activity
+            </p>
+          ) : (
+            <ul className="space-y-3">
+              {recentActivity.map((event) => (
+                <li
+                  key={event.id}
+                  className="flex items-center gap-3 py-2 border-b last:border-0"
+                >
+                  <Avatar className="h-8 w-8">
+                    <AvatarFallback className="text-xs">
+                      {getInitials(event.userEmail)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm">
+                      <span className="font-medium truncate">
+                        {event.userEmail}
+                      </span>{' '}
+                      <span className="text-muted-foreground">
+                        {getActionLabel(event.action)}
+                      </span>
+                      {event.appName && (
+                        <span className="text-muted-foreground">
+                          {' '}
+                          <Badge variant="secondary" className="font-normal">
+                            {event.appName}
+                          </Badge>
+                        </span>
+                      )}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {formatDateTime(event.createdAt)}
+                    </p>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
         </CardContent>
       </Card>
 

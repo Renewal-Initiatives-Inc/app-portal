@@ -4,6 +4,7 @@ import { auth } from '@/lib/auth';
 import { isAdmin } from '@/lib/permissions';
 import { AdminHeader } from '@/components/admin-header';
 import { AdminNav } from '@/components/admin-nav';
+import { getNotifications, getUnreadCount } from '@/lib/db/notifications';
 
 export const metadata = {
   title: 'Admin | App Portal',
@@ -27,9 +28,15 @@ export default async function AdminLayout({
     redirect('/?error=access_denied');
   }
 
+  // Fetch notifications for the current admin
+  const [notifications, unreadCount] = await Promise.all([
+    getNotifications(session.user.id, 10),
+    getUnreadCount(session.user.id),
+  ]);
+
   return (
     <div className="min-h-screen bg-gray-50">
-      <AdminHeader />
+      <AdminHeader notifications={notifications} unreadCount={unreadCount} />
 
       <div className="flex">
         {/* Sidebar Navigation */}

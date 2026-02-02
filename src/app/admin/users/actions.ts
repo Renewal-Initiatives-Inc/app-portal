@@ -10,11 +10,14 @@ import {
   reactivateUser,
   getUserById,
   getAdminCount,
+  getAdminUserIds,
   setUserPermissions,
   grantAdminRole,
   revokeAdminRole,
   isZitadelManagementConfigured,
 } from '@/lib/zitadel';
+import { logAuditEvent, AUDIT_ACTIONS } from '@/lib/db/audit-logs';
+import { createNotificationsForAdmins } from '@/lib/db/notifications';
 
 // Validation schemas
 const inviteUserSchema = z.object({
@@ -41,6 +44,7 @@ async function verifyAdminAccess(): Promise<{
   authorized: boolean;
   error?: string;
   userId?: string;
+  userEmail?: string;
 }> {
   const session = await auth();
 
@@ -53,7 +57,11 @@ async function verifyAdminAccess(): Promise<{
     return { authorized: false, error: 'Admin access required' };
   }
 
-  return { authorized: true, userId: session.user.id };
+  return {
+    authorized: true,
+    userId: session.user.id,
+    userEmail: session.user.email || 'unknown',
+  };
 }
 
 function verifyZitadelConfigured(): ActionResult | null {
@@ -111,6 +119,29 @@ export async function inviteUserAction(formData: FormData): Promise<ActionResult
         result.data.appPermissions,
         result.data.isAdmin
       );
+    }
+
+    // Log audit event
+    await logAuditEvent(
+      accessCheck.userId!,
+      accessCheck.userEmail!,
+      AUDIT_ACTIONS.USER_INVITED,
+      null
+    );
+
+    // Notify other admins
+    try {
+      const adminIds = await getAdminUserIds();
+      const otherAdminIds = adminIds.filter((id) => id !== accessCheck.userId);
+      if (otherAdminIds.length > 0) {
+        await createNotificationsForAdmins(
+          otherAdminIds,
+          `New user invited: ${result.data.email}`
+        );
+      }
+    } catch (notifyError) {
+      // Don't fail the action if notification fails
+      console.error('Failed to create notifications:', notifyError);
     }
 
     revalidatePath('/admin/users');
@@ -182,6 +213,29 @@ export async function updateUserPermissionsAction(
   try {
     await setUserPermissions(userId, result.data.appPermissions, result.data.isAdmin);
 
+    // Log audit event
+    await logAuditEvent(
+      accessCheck.userId!,
+      accessCheck.userEmail!,
+      AUDIT_ACTIONS.PERMISSIONS_UPDATED,
+      null
+    );
+
+    // Notify other admins about permission changes
+    try {
+      const adminIds = await getAdminUserIds();
+      const otherAdminIds = adminIds.filter((id) => id !== accessCheck.userId);
+      if (otherAdminIds.length > 0) {
+        await createNotificationsForAdmins(
+          otherAdminIds,
+          `Permissions updated for ${user.email}`
+        );
+      }
+    } catch (notifyError) {
+      // Don't fail the action if notification fails
+      console.error('Failed to create notifications:', notifyError);
+    }
+
     revalidatePath('/admin/users');
     revalidatePath(`/admin/users/${userId}`);
     revalidatePath('/admin');
@@ -231,6 +285,14 @@ export async function deactivateUserAction(userId: string): Promise<ActionResult
   try {
     await deactivateUser(userId);
 
+    // Log audit event
+    await logAuditEvent(
+      accessCheck.userId!,
+      accessCheck.userEmail!,
+      AUDIT_ACTIONS.USER_DEACTIVATED,
+      null
+    );
+
     revalidatePath('/admin/users');
     revalidatePath(`/admin/users/${userId}`);
     revalidatePath('/admin');
@@ -263,6 +325,14 @@ export async function reactivateUserAction(userId: string): Promise<ActionResult
 
   try {
     await reactivateUser(userId);
+
+    // Log audit event
+    await logAuditEvent(
+      accessCheck.userId!,
+      accessCheck.userEmail!,
+      AUDIT_ACTIONS.USER_REACTIVATED,
+      null
+    );
 
     revalidatePath('/admin/users');
     revalidatePath(`/admin/users/${userId}`);

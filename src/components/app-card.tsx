@@ -1,4 +1,5 @@
-import Link from 'next/link';
+'use client';
+
 import Image from 'next/image';
 import {
   Card,
@@ -7,6 +8,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
+import { logAppAccessAction } from '@/app/actions/log-app-access';
 
 export interface AppCardProps {
   id: string;
@@ -43,11 +45,17 @@ export function AppCard({
   iconUrl,
   appUrl,
 }: AppCardProps) {
+  const handleClick = () => {
+    // Log app access asynchronously - don't block navigation
+    logAppAccessAction(id);
+  };
+
   return (
-    <Link
+    <a
       href={appUrl}
       target="_blank"
       rel="noopener noreferrer"
+      onClick={handleClick}
       className="block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-lg"
       data-testid={`app-card-${slug}`}
     >
@@ -82,6 +90,6 @@ export function AppCard({
           <span className="text-sm text-muted-foreground">Open app</span>
         </CardContent>
       </Card>
-    </Link>
+    </a>
   );
 }

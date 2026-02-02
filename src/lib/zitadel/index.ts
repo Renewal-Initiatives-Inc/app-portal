@@ -30,6 +30,7 @@ export {
   reactivateUser,
   getUserCount,
   getAdminCount,
+  getAdminUserIds,
 } from './users';
 
 // Role operations
