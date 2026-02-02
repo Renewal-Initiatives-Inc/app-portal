@@ -1,16 +1,17 @@
 import { test, expect } from '@playwright/test';
 
-test('home page loads', async ({ page }) => {
-  await page.goto('/');
-  await expect(page).toHaveTitle(/App Portal/);
-});
+test.describe('Home Page', () => {
+  test('redirects to login when unauthenticated', async ({ page }) => {
+    await page.goto('/');
+    await expect(page).toHaveURL(/\/login/);
+  });
 
-test('home page displays sign in button', async ({ page }) => {
-  await page.goto('/');
-  await expect(page.getByRole('button', { name: 'Sign In' })).toBeVisible();
-});
+  test('login page maintains title', async ({ page }) => {
+    await page.goto('/');
+    // After redirect, should still have the app title
+    await expect(page).toHaveTitle(/App Portal/);
+  });
 
-test('home page displays heading', async ({ page }) => {
-  await page.goto('/');
-  await expect(page.getByRole('heading', { name: 'App Portal' })).toBeVisible();
+  // Future: Add authenticated home page tests using storageState
+  // These will be added in Phase 3 when we implement authenticated testing
 });
