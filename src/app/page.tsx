@@ -1,7 +1,9 @@
 import { redirect } from 'next/navigation';
 import { Suspense } from 'react';
+import Link from 'next/link';
 import { auth } from '@/lib/auth';
 import { getAuthorizedApps } from '@/lib/db/apps';
+import { isAdmin } from '@/lib/permissions';
 import { SignOutButton } from '@/components/sign-out-button';
 import { AppCard } from '@/components/app-card';
 import { EmptyState } from '@/components/empty-state';
@@ -60,6 +62,15 @@ export default async function Home() {
             >
               {session.user.email}
             </span>
+            {isAdmin(userRoles) && (
+              <Link
+                href="/admin"
+                className="rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+                data-testid="admin-link"
+              >
+                Admin Portal
+              </Link>
+            )}
             <SignOutButton />
           </div>
         </div>
