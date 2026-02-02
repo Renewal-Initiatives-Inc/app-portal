@@ -10,11 +10,19 @@ const ZITADEL_ROLES_CLAIM = 'urn:zitadel:iam:org:project:roles';
  * We extract just the role names as a string array
  */
 function extractRoles(profile: Record<string, unknown>): string[] {
+  // Debug: Log the full profile to see what claims Zitadel returns
+  console.log('[Auth Debug] Full profile claims:', JSON.stringify(profile, null, 2));
+
   const rolesClaim = profile[ZITADEL_ROLES_CLAIM];
+  console.log('[Auth Debug] Roles claim:', JSON.stringify(rolesClaim, null, 2));
+
   if (!rolesClaim || typeof rolesClaim !== 'object') {
+    console.log('[Auth Debug] No roles claim found or invalid type');
     return [];
   }
-  return Object.keys(rolesClaim as Record<string, unknown>);
+  const roles = Object.keys(rolesClaim as Record<string, unknown>);
+  console.log('[Auth Debug] Extracted roles:', roles);
+  return roles;
 }
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
