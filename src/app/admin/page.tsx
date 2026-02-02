@@ -1,12 +1,17 @@
 import Link from 'next/link';
 import { getAllApps } from '@/lib/db/apps';
+import { getUserCount, isZitadelManagementConfigured } from '@/lib/zitadel';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { AppWindow, Plus, Users, FileText } from 'lucide-react';
+import { AppWindow, Plus, Users, FileText, UserPlus } from 'lucide-react';
 
 export default async function AdminDashboard() {
-  const apps = await getAllApps();
+  const [apps, userCount] = await Promise.all([
+    getAllApps(),
+    isZitadelManagementConfigured() ? getUserCount() : 0,
+  ]);
   const appCount = apps.length;
+  const zitadelConfigured = isZitadelManagementConfigured();
 
   return (
     <div className="space-y-6">
@@ -34,7 +39,7 @@ export default async function AdminDashboard() {
           </CardContent>
         </Card>
 
-        <Card className="opacity-50" data-testid="stat-users">
+        <Card data-testid="stat-users" className={!zitadelConfigured ? 'opacity-50' : ''}>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
               Users
@@ -42,9 +47,13 @@ export default async function AdminDashboard() {
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">—</div>
+            <div className="text-3xl font-bold">
+              {zitadelConfigured ? userCount : '—'}
+            </div>
             <p className="text-xs text-muted-foreground mt-1">
-              Coming in Phase 5
+              {zitadelConfigured
+                ? 'Active users in system'
+                : 'Configure Zitadel API'}
             </p>
           </CardContent>
         </Card>
@@ -81,6 +90,18 @@ export default async function AdminDashboard() {
             <Link href="/admin/apps" data-testid="action-view-apps">
               <AppWindow className="mr-2 h-4 w-4" />
               View All Apps
+            </Link>
+          </Button>
+          <Button variant="outline" asChild>
+            <Link href="/admin/users/invite" data-testid="action-invite-user">
+              <UserPlus className="mr-2 h-4 w-4" />
+              Invite User
+            </Link>
+          </Button>
+          <Button variant="outline" asChild>
+            <Link href="/admin/users" data-testid="action-view-users">
+              <Users className="mr-2 h-4 w-4" />
+              View All Users
             </Link>
           </Button>
         </CardContent>

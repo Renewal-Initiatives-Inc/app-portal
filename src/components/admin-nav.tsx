@@ -27,7 +27,6 @@ const navItems = [
     href: '/admin/users',
     label: 'Users',
     icon: Users,
-    disabled: true, // Phase 5
   },
   {
     href: '/admin/audit-log',
