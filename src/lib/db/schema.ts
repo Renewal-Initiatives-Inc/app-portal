@@ -2,6 +2,7 @@ import { pgTable, text, timestamp, boolean, uuid } from 'drizzle-orm/pg-core';
 
 export const apps = pgTable('apps', {
   id: uuid('id').defaultRandom().primaryKey(),
+  slug: text('slug').notNull().unique(),
   name: text('name').notNull(),
   description: text('description'),
   iconUrl: text('icon_url'),
