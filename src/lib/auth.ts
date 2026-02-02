@@ -42,8 +42,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       authorization: {
         params: {
           // Request roles scope and audience for project to include roles in the token
-          // Include both generic roles claim and project-specific audience
-          scope: `openid profile email urn:zitadel:iam:org:project:roles urn:zitadel:iam:org:project:id:${process.env.ZITADEL_PROJECT_ID}:aud`,
+          // IMPORTANT: Use urn:zitadel:iam:org:projects:roles (plural "projects") to request roles
+          // The claim returned will be urn:zitadel:iam:org:project:{projectid}:roles
+          scope: `openid profile email urn:zitadel:iam:org:projects:roles urn:zitadel:iam:org:project:id:${process.env.ZITADEL_PROJECT_ID}:aud`,
         },
       },
     }),
