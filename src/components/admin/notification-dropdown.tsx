@@ -24,10 +24,12 @@ interface NotificationDropdownProps {
 
 /**
  * Format relative time for display
+ * Note: date may be a string (ISO format) when passed from Server to Client Component
  */
-function formatRelativeTime(date: Date): string {
+function formatRelativeTime(date: Date | string): string {
+  const dateObj = typeof date === 'string' ? new Date(date) : date;
   const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
+  const diffMs = now.getTime() - dateObj.getTime();
   const diffMins = Math.floor(diffMs / (1000 * 60));
   const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
   const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
@@ -40,7 +42,7 @@ function formatRelativeTime(date: Date): string {
   return new Intl.DateTimeFormat('en-US', {
     month: 'short',
     day: 'numeric',
-  }).format(date);
+  }).format(dateObj);
 }
 
 export function NotificationDropdown({

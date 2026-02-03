@@ -21,6 +21,9 @@ interface AuditLogFiltersProps {
   apps: App[];
 }
 
+// Placeholder value for "all" selections (Radix Select doesn't support empty string values)
+const ALL_VALUE = '__all__';
+
 const ACTION_OPTIONS = [
   { value: AUDIT_ACTIONS.APP_ACCESS, label: 'App Access' },
   { value: AUDIT_ACTIONS.APP_CREATED, label: 'App Created' },
@@ -37,13 +40,13 @@ export function AuditLogFilters({ users, apps }: AuditLogFiltersProps) {
   const searchParams = useSearchParams();
   const [isPending, startTransition] = useTransition();
 
-  const currentAction = searchParams.get('action') || '';
-  const currentUser = searchParams.get('user') || '';
-  const currentApp = searchParams.get('app') || '';
+  const currentAction = searchParams.get('action') || ALL_VALUE;
+  const currentUser = searchParams.get('user') || ALL_VALUE;
+  const currentApp = searchParams.get('app') || ALL_VALUE;
   const currentStartDate = searchParams.get('startDate') || '';
   const currentEndDate = searchParams.get('endDate') || '';
 
-  const hasFilters = currentAction || currentUser || currentApp || currentStartDate || currentEndDate;
+  const hasFilters = searchParams.get('action') || searchParams.get('user') || searchParams.get('app') || currentStartDate || currentEndDate;
 
   const updateFilters = useCallback(
     (updates: Record<string, string | null>) => {
@@ -53,7 +56,7 @@ export function AuditLogFilters({ users, apps }: AuditLogFiltersProps) {
       params.delete('page');
 
       Object.entries(updates).forEach(([key, value]) => {
-        if (value === null || value === '') {
+        if (value === null || value === '' || value === ALL_VALUE) {
           params.delete(key);
         } else {
           params.set(key, value);
@@ -81,13 +84,13 @@ export function AuditLogFilters({ users, apps }: AuditLogFiltersProps) {
           <Label htmlFor="action-filter">Action</Label>
           <Select
             value={currentAction}
-            onValueChange={(value) => updateFilters({ action: value || null })}
+            onValueChange={(value) => updateFilters({ action: value })}
           >
             <SelectTrigger id="action-filter" data-testid="action-filter">
               <SelectValue placeholder="All actions" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All actions</SelectItem>
+              <SelectItem value={ALL_VALUE}>All actions</SelectItem>
               {ACTION_OPTIONS.map((option) => (
                 <SelectItem key={option.value} value={option.value}>
                   {option.label}
@@ -102,13 +105,13 @@ export function AuditLogFilters({ users, apps }: AuditLogFiltersProps) {
           <Label htmlFor="user-filter">User</Label>
           <Select
             value={currentUser}
-            onValueChange={(value) => updateFilters({ user: value || null })}
+            onValueChange={(value) => updateFilters({ user: value })}
           >
             <SelectTrigger id="user-filter" data-testid="user-filter">
               <SelectValue placeholder="All users" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All users</SelectItem>
+              <SelectItem value={ALL_VALUE}>All users</SelectItem>
               {users.map((user) => (
                 <SelectItem key={user.userId} value={user.userId}>
                   {user.userEmail}
@@ -123,13 +126,13 @@ export function AuditLogFilters({ users, apps }: AuditLogFiltersProps) {
           <Label htmlFor="app-filter">App</Label>
           <Select
             value={currentApp}
-            onValueChange={(value) => updateFilters({ app: value || null })}
+            onValueChange={(value) => updateFilters({ app: value })}
           >
             <SelectTrigger id="app-filter" data-testid="app-filter">
               <SelectValue placeholder="All apps" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All apps</SelectItem>
+              <SelectItem value={ALL_VALUE}>All apps</SelectItem>
               {apps.map((app) => (
                 <SelectItem key={app.id} value={app.id}>
                   {app.name}
