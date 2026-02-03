@@ -42,8 +42,8 @@ export function AppTable({ apps }: AppTableProps) {
   }
 
   return (
-    <div className="rounded-md border" data-testid="apps-table">
-      <Table>
+    <div className="rounded-md border overflow-x-auto" data-testid="apps-table">
+      <Table className="min-w-[600px]">
         <TableHeader>
           <TableRow>
             <TableHead className="w-12">Icon</TableHead>

@@ -216,12 +216,13 @@ export function UserPermissionsForm({
       </Card>
 
       {/* Actions */}
-      <div className="flex justify-end gap-3">
+      <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3">
         <Button
           type="button"
           variant="outline"
           onClick={handleReset}
           disabled={isSubmitting || !hasChanges}
+          className="w-full sm:w-auto"
         >
           Reset
         </Button>
@@ -229,6 +230,7 @@ export function UserPermissionsForm({
           type="submit"
           disabled={isSubmitting || !hasChanges}
           data-testid="submit-permissions"
+          className="w-full sm:w-auto"
         >
           {isSubmitting ? (
             <>

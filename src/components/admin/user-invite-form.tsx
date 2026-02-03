@@ -227,16 +227,22 @@ export function UserInviteForm({ apps }: UserInviteFormProps) {
       </Card>
 
       {/* Submit */}
-      <div className="flex justify-end gap-3">
+      <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3">
         <Button
           type="button"
           variant="outline"
           onClick={() => router.back()}
           disabled={isSubmitting}
+          className="w-full sm:w-auto"
         >
           Cancel
         </Button>
-        <Button type="submit" disabled={isSubmitting} data-testid="submit-invite">
+        <Button
+          type="submit"
+          disabled={isSubmitting}
+          data-testid="submit-invite"
+          className="w-full sm:w-auto"
+        >
           {isSubmitting ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />

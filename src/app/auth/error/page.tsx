@@ -1,39 +1,107 @@
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { AlertCircle } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { AlertCircle, Home, RefreshCw } from 'lucide-react';
 
 interface AuthErrorPageProps {
   searchParams: Promise<{ error?: string }>;
+}
+
+interface ErrorInfo {
+  title: string;
+  message: string;
+  suggestion: string;
 }
 
 export default async function AuthErrorPage({
   searchParams,
 }: AuthErrorPageProps) {
   const params = await searchParams;
-  const errorMessages: Record<string, string> = {
-    Configuration: 'There is a problem with the server configuration.',
-    AccessDenied: 'You do not have permission to sign in.',
-    Verification:
-      'The verification link may have expired or already been used.',
-    Default: 'An error occurred during authentication.',
+
+  const errorInfo: Record<string, ErrorInfo> = {
+    Configuration: {
+      title: 'Configuration Error',
+      message: 'There is a problem with the authentication setup.',
+      suggestion: 'Please contact your administrator if this problem persists.',
+    },
+    AccessDenied: {
+      title: 'Access Denied',
+      message: 'You do not have permission to access this application.',
+      suggestion: 'If you believe this is a mistake, please contact your administrator to request access.',
+    },
+    Verification: {
+      title: 'Verification Failed',
+      message: 'The verification link may have expired or already been used.',
+      suggestion: 'Please request a new verification email or contact your administrator.',
+    },
+    OAuthSignin: {
+      title: 'Sign In Error',
+      message: 'There was a problem starting the sign-in process.',
+      suggestion: 'Please try again. If the problem continues, try clearing your browser cookies.',
+    },
+    OAuthCallback: {
+      title: 'Sign In Error',
+      message: 'There was a problem completing the sign-in process.',
+      suggestion: 'Please try again. If the problem continues, contact your administrator.',
+    },
+    OAuthAccountNotLinked: {
+      title: 'Account Not Linked',
+      message: 'This email is already associated with a different sign-in method.',
+      suggestion: 'Try signing in with the method you used originally, or contact your administrator.',
+    },
+    Callback: {
+      title: 'Callback Error',
+      message: 'There was a problem processing your sign-in.',
+      suggestion: 'Please try again. If the problem continues, contact your administrator.',
+    },
+    SessionRequired: {
+      title: 'Session Expired',
+      message: 'Your session has expired or you need to sign in.',
+      suggestion: 'Please sign in again to continue.',
+    },
+    Default: {
+      title: 'Authentication Error',
+      message: 'An unexpected error occurred during authentication.',
+      suggestion: 'Please try again. If the problem continues, contact your administrator.',
+    },
   };
 
   const error = params.error || 'Default';
-  const message = errorMessages[error] || errorMessages.Default;
+  const info = errorInfo[error] || errorInfo.Default;
 
   return (
-    <div className="flex min-h-screen items-center justify-center p-4">
-      <div className="w-full max-w-md space-y-4">
-        <Alert variant="destructive" data-testid="auth-error-alert">
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Authentication Error</AlertTitle>
-          <AlertDescription>{message}</AlertDescription>
-        </Alert>
-        <Button asChild className="w-full" data-testid="auth-error-retry">
-          <Link href="/login">Try Again</Link>
-        </Button>
-      </div>
+    <div className="flex min-h-screen items-center justify-center p-4 bg-gray-50">
+      <Card className="w-full max-w-md">
+        <CardHeader className="text-center">
+          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10">
+            <AlertCircle className="h-6 w-6 text-destructive" />
+          </div>
+          <CardTitle data-testid="auth-error-title">{info.title}</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <Alert variant="destructive" data-testid="auth-error-alert">
+            <AlertDescription>{info.message}</AlertDescription>
+          </Alert>
+          <p className="text-sm text-muted-foreground text-center">
+            {info.suggestion}
+          </p>
+        </CardContent>
+        <CardFooter className="flex flex-col gap-3">
+          <Button asChild className="w-full" data-testid="auth-error-retry">
+            <Link href="/login">
+              <RefreshCw className="mr-2 h-4 w-4" />
+              Try Again
+            </Link>
+          </Button>
+          <Button asChild variant="outline" className="w-full" data-testid="auth-error-home">
+            <Link href="/">
+              <Home className="mr-2 h-4 w-4" />
+              Return to Home
+            </Link>
+          </Button>
+        </CardFooter>
+      </Card>
     </div>
   );
 }

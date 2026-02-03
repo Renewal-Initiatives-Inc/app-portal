@@ -66,8 +66,8 @@ export function UserTable({ users }: UserTableProps) {
   }
 
   return (
-    <div className="rounded-md border" data-testid="users-table">
-      <Table>
+    <div className="rounded-md border overflow-x-auto" data-testid="users-table">
+      <Table className="min-w-[600px]">
         <TableHeader>
           <TableRow>
             <TableHead className="w-12">

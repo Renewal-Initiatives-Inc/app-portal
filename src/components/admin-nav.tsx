@@ -8,6 +8,7 @@ import {
   AppWindow,
   Users,
   FileText,
+  BookOpen,
   ArrowLeft,
 } from 'lucide-react';
 
@@ -32,6 +33,11 @@ const navItems = [
     href: '/admin/audit-log',
     label: 'Audit Log',
     icon: FileText,
+  },
+  {
+    href: '/admin/docs',
+    label: 'Help & Docs',
+    icon: BookOpen,
   },
 ];
 

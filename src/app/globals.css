@@ -140,3 +140,39 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Mobile safe area padding for bottom nav (iPhone notch) */
+.safe-area-pb {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Table horizontal scroll container */
+.table-scroll-container {
+  @apply overflow-x-auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Scroll shadow indicators */
+.table-scroll-container::before,
+.table-scroll-container::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 20px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.table-scroll-container.can-scroll-left::before {
+  left: 0;
+  background: linear-gradient(to right, rgba(0,0,0,0.08), transparent);
+  opacity: 1;
+}
+
+.table-scroll-container.can-scroll-right::after {
+  right: 0;
+  background: linear-gradient(to left, rgba(0,0,0,0.08), transparent);
+  opacity: 1;
+}

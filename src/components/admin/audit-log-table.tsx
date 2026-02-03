@@ -76,8 +76,8 @@ export function AuditLogTable({ logs }: AuditLogTableProps) {
   }
 
   return (
-    <div className="rounded-md border" data-testid="audit-log-table">
-      <Table>
+    <div className="rounded-md border overflow-x-auto" data-testid="audit-log-table">
+      <Table className="min-w-[500px]">
         <TableHeader>
           <TableRow>
             <TableHead>Date & Time</TableHead>

@@ -64,7 +64,10 @@ export async function POST(request: Request): Promise<NextResponse> {
     return NextResponse.json({ url: blob.url });
   } catch (error) {
     console.error('Upload error:', error);
-    return NextResponse.json({ error: 'Upload failed' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Failed to upload file. Please try again or contact support if the problem persists.' },
+      { status: 500 }
+    );
   }
 }
 
@@ -92,6 +95,9 @@ export async function DELETE(request: Request): Promise<NextResponse> {
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Delete error:', error);
-    return NextResponse.json({ error: 'Delete failed' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Failed to delete file. Please try again.' },
+      { status: 500 }
+    );
   }
 }

@@ -245,7 +245,7 @@ export function AppForm({ app, mode }: AppFormProps) {
           {/* Icon Upload */}
           <div className="space-y-2">
             <Label>Icon (optional)</Label>
-            <div className="flex items-start gap-4">
+            <div className="flex flex-col xs:flex-row items-start gap-4">
               {/* Preview */}
               <div className="flex-shrink-0">
                 {iconUrl ? (
@@ -253,27 +253,28 @@ export function AppForm({ app, mode }: AppFormProps) {
                     <img
                       src={iconUrl}
                       alt="App icon preview"
-                      className="h-16 w-16 rounded-lg object-cover border"
+                      className="h-16 w-16 sm:h-20 sm:w-20 rounded-lg object-cover border"
                       data-testid="app-icon-preview"
                     />
                     <button
                       type="button"
                       onClick={handleRemoveIcon}
-                      className="absolute -top-2 -right-2 rounded-full bg-destructive text-destructive-foreground p-1 hover:bg-destructive/90"
+                      className="absolute -top-2 -right-2 rounded-full bg-destructive text-destructive-foreground p-1.5 hover:bg-destructive/90 touch-manipulation"
                       title="Remove icon"
+                      aria-label="Remove icon"
                     >
                       <X className="h-3 w-3" />
                     </button>
                   </div>
                 ) : (
-                  <div className="h-16 w-16 rounded-lg border-2 border-dashed flex items-center justify-center bg-muted">
-                    <AppWindow className="h-6 w-6 text-muted-foreground" />
+                  <div className="h-16 w-16 sm:h-20 sm:w-20 rounded-lg border-2 border-dashed flex items-center justify-center bg-muted">
+                    <AppWindow className="h-6 w-6 sm:h-8 sm:w-8 text-muted-foreground" />
                   </div>
                 )}
               </div>
 
               {/* Upload button */}
-              <div className="flex-1">
+              <div className="flex-1 w-full xs:w-auto">
                 <input
                   ref={fileInputRef}
                   type="file"
@@ -288,6 +289,7 @@ export function AppForm({ app, mode }: AppFormProps) {
                   variant="outline"
                   onClick={() => fileInputRef.current?.click()}
                   disabled={isUploading}
+                  className="w-full xs:w-auto"
                 >
                   {isUploading ? (
                     <>
@@ -314,16 +316,22 @@ export function AppForm({ app, mode }: AppFormProps) {
       </Card>
 
       {/* Form Actions */}
-      <div className="flex justify-end gap-3">
+      <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3">
         <Button
           type="button"
           variant="outline"
           onClick={() => router.back()}
           disabled={isSubmitting}
+          className="w-full sm:w-auto"
         >
           Cancel
         </Button>
-        <Button type="submit" disabled={isSubmitting} data-testid="submit-app">
+        <Button
+          type="submit"
+          disabled={isSubmitting}
+          data-testid="submit-app"
+          className="w-full sm:w-auto"
+        >
           {isSubmitting ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
