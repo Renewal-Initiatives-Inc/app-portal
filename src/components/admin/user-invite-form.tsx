@@ -234,6 +234,7 @@ export function UserInviteForm({ apps }: UserInviteFormProps) {
           onClick={() => router.back()}
           disabled={isSubmitting}
           className="w-full sm:w-auto"
+          data-testid="user-invite-form-cancel-btn"
         >
           Cancel
         </Button>

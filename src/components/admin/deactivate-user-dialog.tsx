@@ -91,6 +91,7 @@ export function DeactivateUserDialog({
             variant="outline"
             onClick={() => onOpenChange(false)}
             disabled={isLoading}
+            data-testid="deactivate-user-dialog-cancel"
           >
             Cancel
           </Button>

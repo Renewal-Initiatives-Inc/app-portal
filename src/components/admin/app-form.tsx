@@ -290,6 +290,7 @@ export function AppForm({ app, mode }: AppFormProps) {
                   onClick={() => fileInputRef.current?.click()}
                   disabled={isUploading}
                   className="w-full xs:w-auto"
+                  data-testid="app-form-upload-icon-btn"
                 >
                   {isUploading ? (
                     <>
@@ -323,6 +324,7 @@ export function AppForm({ app, mode }: AppFormProps) {
           onClick={() => router.back()}
           disabled={isSubmitting}
           className="w-full sm:w-auto"
+          data-testid="app-form-cancel-btn"
         >
           Cancel
         </Button>

@@ -223,6 +223,7 @@ export function UserPermissionsForm({
           onClick={handleReset}
           disabled={isSubmitting || !hasChanges}
           className="w-full sm:w-auto"
+          data-testid="user-permissions-form-reset-btn"
         >
           Reset
         </Button>

@@ -57,7 +57,7 @@ export default async function UserDetailPage({ params, searchParams }: PageProps
     return (
       <div className="space-y-6">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="sm" asChild>
+          <Button variant="ghost" size="sm" asChild data-testid="user-detail-back-link-disabled">
             <Link href="/admin/users">
               <ArrowLeft className="mr-2 h-4 w-4" />
               Back to Users
@@ -91,7 +91,7 @@ export default async function UserDetailPage({ params, searchParams }: PageProps
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
-        <Button variant="ghost" size="sm" asChild>
+        <Button variant="ghost" size="sm" asChild data-testid="user-detail-back-link">
           <Link href="/admin/users">
             <ArrowLeft className="mr-2 h-4 w-4" />
             Back to Users
@@ -140,6 +140,7 @@ export default async function UserDetailPage({ params, searchParams }: PageProps
                 size="sm"
                 className="text-destructive hover:text-destructive"
                 asChild
+                data-testid="user-detail-deactivate-btn"
               >
                 <Link href={`/admin/users?deactivate=${user.id}`}>
                   <UserX className="mr-2 h-4 w-4" />
@@ -157,6 +158,7 @@ export default async function UserDetailPage({ params, searchParams }: PageProps
               size="sm"
               className="text-green-600 hover:text-green-600"
               asChild
+              data-testid="user-detail-reactivate-btn"
             >
               <Link href={`/admin/users?reactivate=${user.id}`}>
                 <UserCheck className="mr-2 h-4 w-4" />

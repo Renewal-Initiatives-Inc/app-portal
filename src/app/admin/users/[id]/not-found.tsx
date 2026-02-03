@@ -12,7 +12,7 @@ export default function UserNotFound() {
       <p className="text-muted-foreground mt-2 max-w-md">
         The user you&apos;re looking for doesn&apos;t exist or may have been removed.
       </p>
-      <Button asChild className="mt-6">
+      <Button asChild className="mt-6" data-testid="user-not-found-back-btn">
         <Link href="/admin/users">Back to Users</Link>
       </Button>
     </div>

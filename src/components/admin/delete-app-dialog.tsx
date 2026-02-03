@@ -79,6 +79,7 @@ export function DeleteAppDialog({
             variant="outline"
             onClick={() => onOpenChange(false)}
             disabled={isDeleting}
+            data-testid="delete-app-dialog-cancel"
           >
             Cancel
           </Button>

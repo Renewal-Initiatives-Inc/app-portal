@@ -12,7 +12,7 @@ export default function AppNotFound() {
       <p className="text-muted-foreground mt-1 max-w-sm">
         The application you&apos;re looking for doesn&apos;t exist or has been deleted.
       </p>
-      <Button asChild className="mt-4">
+      <Button asChild className="mt-4" data-testid="app-not-found-back-btn">
         <Link href="/admin/apps">Back to Apps</Link>
       </Button>
     </div>
