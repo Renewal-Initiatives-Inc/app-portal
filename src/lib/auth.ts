@@ -1,5 +1,6 @@
 import NextAuth from 'next-auth';
 import Zitadel from 'next-auth/providers/zitadel';
+import { isE2ETestMode, getE2EMockSession } from './test-mode';
 
 // Zitadel role claim keys - check both generic and project-specific formats
 const ZITADEL_ROLES_CLAIM_GENERIC = 'urn:zitadel:iam:org:project:roles';
@@ -34,7 +35,7 @@ function extractRoles(profile: Record<string, unknown>): string[] {
   return roles;
 }
 
-export const { handlers, signIn, signOut, auth } = NextAuth({
+const nextAuth = NextAuth({
   providers: [
     Zitadel({
       clientId: process.env.ZITADEL_CLIENT_ID!,
@@ -77,3 +78,47 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   },
   trustHost: true,
 });
+
+// Export handlers, signIn, signOut directly from NextAuth
+export const { handlers, signIn, signOut } = nextAuth;
+
+// Re-export the original auth for use in middleware (which can't use test mode)
+export const authOriginal = nextAuth.auth;
+
+/**
+ * Wrapped auth function that supports E2E test mode.
+ * In test mode, returns a mock session instead of checking real authentication.
+ *
+ * SECURITY: Test mode is protected by multiple safeguards in test-mode.ts
+ * and will never activate in production environments.
+ */
+export async function auth(): Promise<{
+  user: {
+    id: string;
+    name?: string | null;
+    email?: string | null;
+    image?: string | null;
+    roles: string[];
+  };
+  expires: string;
+} | null> {
+  // Check if E2E test mode is active (has multiple production safeguards)
+  if (isE2ETestMode()) {
+    const mockSession = getE2EMockSession();
+    if (mockSession) {
+      return mockSession;
+    }
+  }
+
+  // Normal authentication flow
+  return nextAuth.auth() as Promise<{
+    user: {
+      id: string;
+      name?: string | null;
+      email?: string | null;
+      image?: string | null;
+      roles: string[];
+    };
+    expires: string;
+  } | null>;
+}

@@ -183,6 +183,16 @@ export async function revokeAdminRole(userId: string): Promise<void> {
  */
 export async function grantAppAccess(userId: string, appSlug: string): Promise<void> {
   const roleKey = `app:${appSlug}`;
+
+  // Validate that the role exists in Zitadel before granting
+  const validation = await validateRolesExist([roleKey]);
+  if (!validation.valid) {
+    throw new Error(
+      `Cannot grant access: role '${roleKey}' not found in Zitadel. ` +
+      `Please create this role in the Zitadel Console first.`
+    );
+  }
+
   const existingGrants = await getUserGrants(userId);
 
   if (existingGrants.length > 0) {
@@ -231,6 +241,18 @@ export async function setUserPermissions(
     newRoleKeys.push(ADMIN_ROLE_KEY);
   }
 
+  // Validate that app roles exist in Zitadel before granting
+  const appRoleKeys = newRoleKeys.filter(role => role.startsWith('app:'));
+  if (appRoleKeys.length > 0) {
+    const validation = await validateRolesExist(appRoleKeys);
+    if (!validation.valid) {
+      throw new Error(
+        `Cannot grant access: roles not found in Zitadel: ${validation.missingRoles.join(', ')}. ` +
+        `Please create these roles in the Zitadel Console first.`
+      );
+    }
+  }
+
   const existingGrants = await getUserGrants(userId);
 
   if (existingGrants.length === 0 && newRoleKeys.length > 0) {
@@ -251,6 +273,27 @@ export async function setUserPermissions(
       await deleteUserGrant(userId, grant.id);
     }
   }
+}
+
+/**
+ * Validate that the specified roles exist in Zitadel
+ * Returns information about which roles are missing (if any)
+ */
+export async function validateRolesExist(roleKeys: string[]): Promise<{
+  valid: boolean;
+  missingRoles: string[];
+}> {
+  if (roleKeys.length === 0) {
+    return { valid: true, missingRoles: [] };
+  }
+
+  const existingRoles = await getProjectRoles();
+  const missingRoles = roleKeys.filter(role => !existingRoles.includes(role));
+
+  return {
+    valid: missingRoles.length === 0,
+    missingRoles,
+  };
 }
 
 /**

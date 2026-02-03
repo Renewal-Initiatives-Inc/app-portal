@@ -47,6 +47,7 @@ export {
   revokeAppAccess,
   setUserPermissions,
   getProjectRoles,
+  validateRolesExist,
 } from './roles';
 
 // Types
