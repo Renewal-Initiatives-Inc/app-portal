@@ -51,6 +51,13 @@ const nextAuth = NextAuth({
     }),
   ],
   callbacks: {
+    signIn: async ({ profile }) => {
+      const roles = extractRoles(profile as Record<string, unknown>);
+      if (!roles.includes('admin') && !roles.includes('app:app-portal')) {
+        return false;
+      }
+      return true;
+    },
     authorized: async ({ auth }) => {
       // Logged in users are authenticated
       return !!auth;
