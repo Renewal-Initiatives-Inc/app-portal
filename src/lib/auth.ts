@@ -63,17 +63,25 @@ const nextAuth = NextAuth({
       return !!auth;
     },
     jwt: async ({ token, account, profile }) => {
-      // Persist user ID and roles from Zitadel to the JWT
+      // Persist user ID, email, and roles from Zitadel to the JWT
       if (account && profile) {
         token.userId = profile.sub ?? undefined;
+        token.email = profile.email ?? token.email;
+        token.name = profile.name ?? token.name;
         token.roles = extractRoles(profile as Record<string, unknown>);
       }
       return token;
     },
     session: async ({ session, token }) => {
-      // Add user ID and roles to session
+      // Add user ID, email, and roles to session
       if (token.userId) {
         session.user.id = token.userId as string;
+      }
+      if (token.email) {
+        session.user.email = token.email as string;
+      }
+      if (token.name) {
+        session.user.name = token.name as string;
       }
       session.user.roles = (token.roles as string[]) || [];
       return session;

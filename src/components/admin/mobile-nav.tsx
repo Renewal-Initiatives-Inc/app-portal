@@ -7,6 +7,7 @@ import {
   LayoutDashboard,
   AppWindow,
   Users,
+  UserCog,
   FileText,
   BookOpen,
   Home,
@@ -28,6 +29,11 @@ const navItems = [
     href: '/admin/users',
     label: 'Users',
     icon: Users,
+  },
+  {
+    href: '/admin/employees',
+    label: 'Staff',
+    icon: UserCog,
   },
   {
     href: '/admin/audit-log',
