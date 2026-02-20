@@ -104,7 +104,7 @@ export async function createEmployeeAction(
     'isOfficer',
     'boardMember',
   ]) {
-    rawData[boolField] = rawData[boolField] === 'on' ? 'true' : 'false';
+    rawData[boolField] = rawData[boolField] === 'on' ? 'true' : '';
   }
 
   const result = createEmployeeSchema.safeParse(rawData);
@@ -198,7 +198,7 @@ export async function updateEmployeeAction(
     'isOfficer',
     'boardMember',
   ]) {
-    rawData[boolField] = rawData[boolField] === 'on' ? 'true' : 'false';
+    rawData[boolField] = rawData[boolField] === 'on' ? 'true' : '';
   }
 
   const result = updateEmployeeSchema.safeParse(rawData);
