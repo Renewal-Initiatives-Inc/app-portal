@@ -1,9 +1,18 @@
 import { db } from '@/lib/db';
 import { auditLogs, apps } from '@/lib/db/schema';
-import { desc, eq, and, gte, lte, sql, count } from 'drizzle-orm';
+import { desc, eq, and, gte, lte, count } from 'drizzle-orm';
+import type { VercelPgTransaction } from 'drizzle-orm/vercel-postgres';
+import type { ExtractTablesWithRelations } from 'drizzle-orm';
+import type * as schema from '@/lib/db/schema';
 
 export type AuditLog = typeof auditLogs.$inferSelect;
 export type NewAuditLog = typeof auditLogs.$inferInsert;
+
+/** Transaction type for passing db.transaction() context */
+export type DbTransaction = VercelPgTransaction<
+  typeof schema,
+  ExtractTablesWithRelations<typeof schema>
+>;
 
 /**
  * Audit action types
@@ -17,6 +26,10 @@ export const AUDIT_ACTIONS = {
   USER_DEACTIVATED: 'user_deactivated',
   USER_REACTIVATED: 'user_reactivated',
   PERMISSIONS_UPDATED: 'permissions_updated',
+  EMPLOYEE_CREATED: 'employee_created',
+  EMPLOYEE_UPDATED: 'employee_updated',
+  EMPLOYEE_DEACTIVATED: 'employee_deactivated',
+  LOGIN_DENIED: 'login_denied',
 } as const;
 
 export type AuditAction = (typeof AUDIT_ACTIONS)[keyof typeof AUDIT_ACTIONS];
@@ -49,21 +62,31 @@ export interface PaginationOptions {
 }
 
 /**
- * Log an audit event
+ * Log an audit event. Accepts an optional transaction context so the audit
+ * insert participates in the same transaction as the primary operation.
+ * Per policy §7.3: if the audit insert fails, the entire operation rolls back.
  */
 export async function logAuditEvent(
   userId: string,
   userEmail: string,
   action: AuditAction,
-  appId?: string | null
+  appId?: string | null,
+  options?: {
+    tx?: DbTransaction;
+    beforeState?: Record<string, unknown> | null;
+    afterState?: Record<string, unknown> | null;
+  }
 ): Promise<AuditLog> {
-  const results = await db
+  const executor = options?.tx ?? db;
+  const results = await executor
     .insert(auditLogs)
     .values({
       userId,
       userEmail,
       action,
       appId: appId ?? null,
+      beforeState: options?.beforeState ?? null,
+      afterState: options?.afterState ?? null,
       createdAt: new Date(),
     })
     .returning();
@@ -115,6 +138,8 @@ export async function getAuditLogs(
       userEmail: auditLogs.userEmail,
       appId: auditLogs.appId,
       action: auditLogs.action,
+      beforeState: auditLogs.beforeState,
+      afterState: auditLogs.afterState,
       createdAt: auditLogs.createdAt,
       appName: apps.name,
       appSlug: apps.slug,
@@ -151,6 +176,8 @@ export async function getRecentAuditLogs(
       userEmail: auditLogs.userEmail,
       appId: auditLogs.appId,
       action: auditLogs.action,
+      beforeState: auditLogs.beforeState,
+      afterState: auditLogs.afterState,
       createdAt: auditLogs.createdAt,
       appName: apps.name,
       appSlug: apps.slug,
@@ -167,22 +194,6 @@ export async function getRecentAuditLogs(
 export async function getAuditLogCount(): Promise<number> {
   const result = await db.select({ count: count() }).from(auditLogs);
   return result[0]?.count ?? 0;
-}
-
-/**
- * Delete audit logs older than specified number of days
- * Used for retention policy cleanup
- */
-export async function deleteOldAuditLogs(daysOld: number): Promise<number> {
-  const cutoffDate = new Date();
-  cutoffDate.setDate(cutoffDate.getDate() - daysOld);
-
-  const result = await db
-    .delete(auditLogs)
-    .where(lte(auditLogs.createdAt, cutoffDate))
-    .returning();
-
-  return result.length;
 }
 
 /**

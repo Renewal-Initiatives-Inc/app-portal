@@ -11,11 +11,15 @@ describe('AUDIT_ACTIONS', () => {
     expect(AUDIT_ACTIONS.USER_DEACTIVATED).toBe('user_deactivated');
     expect(AUDIT_ACTIONS.USER_REACTIVATED).toBe('user_reactivated');
     expect(AUDIT_ACTIONS.PERMISSIONS_UPDATED).toBe('permissions_updated');
+    expect(AUDIT_ACTIONS.EMPLOYEE_CREATED).toBe('employee_created');
+    expect(AUDIT_ACTIONS.EMPLOYEE_UPDATED).toBe('employee_updated');
+    expect(AUDIT_ACTIONS.EMPLOYEE_DEACTIVATED).toBe('employee_deactivated');
+    expect(AUDIT_ACTIONS.LOGIN_DENIED).toBe('login_denied');
   });
 
-  it('contains 8 action types', () => {
+  it('contains 12 action types', () => {
     const actionCount = Object.keys(AUDIT_ACTIONS).length;
-    expect(actionCount).toBe(8);
+    expect(actionCount).toBe(12);
   });
 
   it('has unique values for all actions', () => {

@@ -97,7 +97,7 @@ export const handlers = [
       return HttpResponse.json({ error: 'No file provided' }, { status: 400 });
     }
 
-    const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/svg+xml'];
+    const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp'];
     if (!allowedTypes.includes(file.type)) {
       return HttpResponse.json(
         { error: `Invalid file type. Allowed types: ${allowedTypes.join(', ')}` },
@@ -138,7 +138,7 @@ export const handlers = [
 
     return HttpResponse.json({
       success: true,
-      deleted: { auditLogs: 5, notifications: 10 },
+      deleted: { notifications: 10 },
       timestamp: new Date().toISOString(),
     });
   }),

@@ -33,6 +33,10 @@ const ACTION_OPTIONS = [
   { value: AUDIT_ACTIONS.USER_DEACTIVATED, label: 'User Deactivated' },
   { value: AUDIT_ACTIONS.USER_REACTIVATED, label: 'User Reactivated' },
   { value: AUDIT_ACTIONS.PERMISSIONS_UPDATED, label: 'Permissions Updated' },
+  { value: AUDIT_ACTIONS.EMPLOYEE_CREATED, label: 'Employee Created' },
+  { value: AUDIT_ACTIONS.EMPLOYEE_UPDATED, label: 'Employee Updated' },
+  { value: AUDIT_ACTIONS.EMPLOYEE_DEACTIVATED, label: 'Employee Deactivated' },
+  { value: AUDIT_ACTIONS.LOGIN_DENIED, label: 'Login Denied' },
 ];
 
 export function AuditLogFilters({ users, apps }: AuditLogFiltersProps) {

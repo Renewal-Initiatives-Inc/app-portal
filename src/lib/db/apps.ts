@@ -2,6 +2,7 @@ import { db } from '@/lib/db';
 import { apps, auditLogs } from '@/lib/db/schema';
 import { filterAuthorizedApps } from '@/lib/permissions';
 import { asc, eq, ne, and } from 'drizzle-orm';
+import type { DbTransaction } from '@/lib/db/audit-logs';
 
 export type App = typeof apps.$inferSelect;
 export type NewApp = typeof apps.$inferInsert;
@@ -61,12 +62,14 @@ export async function isSlugUnique(
 }
 
 /**
- * Create a new app
+ * Create a new app. Accepts optional transaction context.
  */
 export async function createApp(
-  data: Omit<NewApp, 'id' | 'createdAt' | 'updatedAt'>
+  data: Omit<NewApp, 'id' | 'createdAt' | 'updatedAt'>,
+  tx?: DbTransaction
 ): Promise<App> {
-  const results = await db
+  const executor = tx ?? db;
+  const results = await executor
     .insert(apps)
     .values({
       ...data,
@@ -79,13 +82,15 @@ export async function createApp(
 }
 
 /**
- * Update an existing app
+ * Update an existing app. Accepts optional transaction context.
  */
 export async function updateApp(
   id: string,
-  data: Partial<Omit<NewApp, 'id' | 'createdAt'>>
+  data: Partial<Omit<NewApp, 'id' | 'createdAt'>>,
+  tx?: DbTransaction
 ): Promise<App | null> {
-  const results = await db
+  const executor = tx ?? db;
+  const results = await executor
     .update(apps)
     .set({
       ...data,
@@ -98,17 +103,18 @@ export async function updateApp(
 }
 
 /**
- * Delete an app by ID
- * First nullifies any audit log references to avoid foreign key constraint violations
+ * Delete an app by ID. Accepts optional transaction context.
+ * First nullifies any audit log references to avoid foreign key constraint violations.
  */
-export async function deleteApp(id: string): Promise<boolean> {
+export async function deleteApp(id: string, tx?: DbTransaction): Promise<boolean> {
+  const executor = tx ?? db;
   // First, nullify appId references in audit_logs to avoid FK constraint
-  await db
+  await executor
     .update(auditLogs)
     .set({ appId: null })
     .where(eq(auditLogs.appId, id));
 
   // Now delete the app
-  const results = await db.delete(apps).where(eq(apps.id, id)).returning();
+  const results = await executor.delete(apps).where(eq(apps.id, id)).returning();
   return results.length > 0;
 }

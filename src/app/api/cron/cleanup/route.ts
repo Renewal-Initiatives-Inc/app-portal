@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cleanupOldRecords } from '@/lib/db/cleanup';
+import { checkCronRateLimit } from '@/lib/rate-limit';
 
 /**
  * Vercel Cron Job endpoint for cleaning up old records
@@ -8,6 +9,14 @@ import { cleanupOldRecords } from '@/lib/db/cleanup';
  * Requires CRON_SECRET environment variable to be set
  */
 export async function GET(request: NextRequest) {
+  const rateCheck = await checkCronRateLimit();
+  if (!rateCheck.allowed) {
+    return NextResponse.json(
+      { error: 'Too many requests' },
+      { status: 429, headers: { 'Retry-After': String(rateCheck.retryAfter) } }
+    );
+  }
+
   // Verify the request is from Vercel Cron
   const authHeader = request.headers.get('authorization');
   const cronSecret = process.env.CRON_SECRET;

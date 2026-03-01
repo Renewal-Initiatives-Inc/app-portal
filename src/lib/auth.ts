@@ -1,6 +1,7 @@
 import NextAuth from 'next-auth';
 import Zitadel from 'next-auth/providers/zitadel';
 import { isE2ETestMode, getE2EMockSession } from './test-mode';
+import { logAuditEvent, AUDIT_ACTIONS } from './db/audit-logs';
 
 // Zitadel role claim keys - check both generic and project-specific formats
 const ZITADEL_ROLES_CLAIM_GENERIC = 'urn:zitadel:iam:org:project:roles';
@@ -14,25 +15,16 @@ const ZITADEL_ROLES_CLAIM_SPECIFIC = `urn:zitadel:iam:org:project:${ZITADEL_PROJ
  * Checks both generic and project-specific claim formats
  */
 function extractRoles(profile: Record<string, unknown>): string[] {
-  // Debug: Log the full profile to see what claims Zitadel returns
-  console.log('[Auth Debug] Full profile claims:', JSON.stringify(profile, null, 2));
-  console.log('[Auth Debug] Looking for claims:', ZITADEL_ROLES_CLAIM_GENERIC, 'or', ZITADEL_ROLES_CLAIM_SPECIFIC);
-
   // Try generic claim first, then project-specific
   let rolesClaim = profile[ZITADEL_ROLES_CLAIM_GENERIC];
   if (!rolesClaim) {
-    console.log('[Auth Debug] Generic claim not found, trying project-specific');
     rolesClaim = profile[ZITADEL_ROLES_CLAIM_SPECIFIC];
   }
-  console.log('[Auth Debug] Roles claim:', JSON.stringify(rolesClaim, null, 2));
 
   if (!rolesClaim || typeof rolesClaim !== 'object') {
-    console.log('[Auth Debug] No roles claim found or invalid type');
     return [];
   }
-  const roles = Object.keys(rolesClaim as Record<string, unknown>);
-  console.log('[Auth Debug] Extracted roles:', roles);
-  return roles;
+  return Object.keys(rolesClaim as Record<string, unknown>);
 }
 
 const nextAuth = NextAuth({
@@ -54,6 +46,16 @@ const nextAuth = NextAuth({
     signIn: async ({ profile }) => {
       const roles = extractRoles(profile as Record<string, unknown>);
       if (!roles.includes('admin') && !roles.includes('app:app-portal')) {
+        // Log denied login for incident detection (policy §10.1)
+        // Fire-and-forget — don't block the auth flow
+        const p = profile as Record<string, unknown>;
+        logAuditEvent(
+          (p.sub as string) || 'unknown',
+          (p.email as string) || 'unknown',
+          AUDIT_ACTIONS.LOGIN_DENIED,
+          null,
+          { afterState: { roles, reason: 'missing required role' } }
+        ).catch(() => {/* swallow — logging failure must not break auth */});
         return false;
       }
       return true;

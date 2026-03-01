@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { AlertCircle, Home, RefreshCw } from 'lucide-react';
+import { AlertCircle, Clock, Home, LogIn, RefreshCw } from 'lucide-react';
 
 interface AuthErrorPageProps {
   searchParams: Promise<{ error?: string }>;
@@ -69,6 +69,39 @@ export default async function AuthErrorPage({
 
   const error = params.error || 'Default';
   const info = errorInfo[error] || errorInfo.Default;
+  const isSessionExpired = error === 'SessionRequired';
+
+  if (isSessionExpired) {
+    return (
+      <div className="flex min-h-screen items-center justify-center p-4 bg-gray-50">
+        <Card className="w-full max-w-md">
+          <CardHeader className="text-center">
+            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-amber-100">
+              <Clock className="h-6 w-6 text-amber-600" />
+            </div>
+            <CardTitle data-testid="auth-error-title">
+              Looks like you&apos;ve been away for a bit!
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-sm text-muted-foreground text-center" data-testid="auth-error-message">
+              Your session timed out while you were off being awesome.
+              No worries — just sign back in and you&apos;ll be right where
+              you left off. Believe.
+            </p>
+          </CardContent>
+          <CardFooter>
+            <Button asChild className="w-full" data-testid="auth-error-signin">
+              <Link href="/login">
+                <LogIn className="mr-2 h-4 w-4" />
+                Sign In Again
+              </Link>
+            </Button>
+          </CardFooter>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen items-center justify-center p-4 bg-gray-50">

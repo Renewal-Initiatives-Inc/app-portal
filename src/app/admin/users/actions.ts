@@ -16,8 +16,10 @@ import {
   revokeAdminRole,
   isZitadelManagementConfigured,
 } from '@/lib/zitadel';
+import { db } from '@/lib/db';
 import { logAuditEvent, AUDIT_ACTIONS } from '@/lib/db/audit-logs';
 import { createNotificationsForAdmins } from '@/lib/db/notifications';
+import { checkActionRateLimit } from '@/lib/rate-limit';
 
 // Validation schemas
 const inviteUserSchema = z.object({
@@ -86,6 +88,11 @@ export async function inviteUserAction(formData: FormData): Promise<ActionResult
     return { success: false, error: accessCheck.error };
   }
 
+  const rateCheck = await checkActionRateLimit(accessCheck.userId);
+  if (!rateCheck.allowed) {
+    return { success: false, error: 'Too many requests. Please try again shortly.' };
+  }
+
   const rawData = {
     email: formData.get('email') as string,
     firstName: (formData.get('firstName') as string) || '',
@@ -121,28 +128,39 @@ export async function inviteUserAction(formData: FormData): Promise<ActionResult
       );
     }
 
-    // Log audit event
-    await logAuditEvent(
-      accessCheck.userId!,
-      accessCheck.userEmail!,
-      AUDIT_ACTIONS.USER_INVITED,
-      null
-    );
+    // Log audit event + notifications in a single transaction
+    await db.transaction(async (tx) => {
+      await logAuditEvent(
+        accessCheck.userId!,
+        accessCheck.userEmail!,
+        AUDIT_ACTIONS.USER_INVITED,
+        null,
+        {
+          tx,
+          afterState: {
+            email: result.data.email,
+            firstName: result.data.firstName,
+            lastName: result.data.lastName,
+            appPermissions: result.data.appPermissions,
+            isAdmin: result.data.isAdmin,
+          },
+        }
+      );
 
-    // Notify other admins
-    try {
-      const adminIds = await getAdminUserIds();
-      const otherAdminIds = adminIds.filter((id) => id !== accessCheck.userId);
-      if (otherAdminIds.length > 0) {
-        await createNotificationsForAdmins(
-          otherAdminIds,
-          `New user invited: ${result.data.email}`
-        );
+      try {
+        const adminIds = await getAdminUserIds();
+        const otherAdminIds = adminIds.filter((id) => id !== accessCheck.userId);
+        if (otherAdminIds.length > 0) {
+          await createNotificationsForAdmins(
+            otherAdminIds,
+            `New user invited: ${result.data.email}`
+          );
+        }
+      } catch (notifyError) {
+        // Don't fail the action if notification fails
+        console.error('Failed to create notifications:', notifyError);
       }
-    } catch (notifyError) {
-      // Don't fail the action if notification fails
-      console.error('Failed to create notifications:', notifyError);
-    }
+    });
 
     revalidatePath('/admin/users');
     revalidatePath('/admin');
@@ -168,6 +186,11 @@ export async function updateUserPermissionsAction(
   const accessCheck = await verifyAdminAccess();
   if (!accessCheck.authorized) {
     return { success: false, error: accessCheck.error };
+  }
+
+  const rateCheck = await checkActionRateLimit(accessCheck.userId);
+  if (!rateCheck.allowed) {
+    return { success: false, error: 'Too many requests. Please try again shortly.' };
   }
 
   // Verify user exists
@@ -213,28 +236,42 @@ export async function updateUserPermissionsAction(
   try {
     await setUserPermissions(userId, result.data.appPermissions, result.data.isAdmin);
 
-    // Log audit event
-    await logAuditEvent(
-      accessCheck.userId!,
-      accessCheck.userEmail!,
-      AUDIT_ACTIONS.PERMISSIONS_UPDATED,
-      null
-    );
+    // Log audit event + notifications in a single transaction
+    await db.transaction(async (tx) => {
+      await logAuditEvent(
+        accessCheck.userId!,
+        accessCheck.userEmail!,
+        AUDIT_ACTIONS.PERMISSIONS_UPDATED,
+        null,
+        {
+          tx,
+          beforeState: {
+            email: user.email,
+            roles: user.roles,
+            isAdmin: user.isAdmin,
+          },
+          afterState: {
+            email: user.email,
+            appPermissions: result.data.appPermissions,
+            isAdmin: result.data.isAdmin,
+          },
+        }
+      );
 
-    // Notify other admins about permission changes
-    try {
-      const adminIds = await getAdminUserIds();
-      const otherAdminIds = adminIds.filter((id) => id !== accessCheck.userId);
-      if (otherAdminIds.length > 0) {
-        await createNotificationsForAdmins(
-          otherAdminIds,
-          `Permissions updated for ${user.email}`
-        );
+      try {
+        const adminIds = await getAdminUserIds();
+        const otherAdminIds = adminIds.filter((id) => id !== accessCheck.userId);
+        if (otherAdminIds.length > 0) {
+          await createNotificationsForAdmins(
+            otherAdminIds,
+            `Permissions updated for ${user.email}`
+          );
+        }
+      } catch (notifyError) {
+        // Don't fail the action if notification fails
+        console.error('Failed to create notifications:', notifyError);
       }
-    } catch (notifyError) {
-      // Don't fail the action if notification fails
-      console.error('Failed to create notifications:', notifyError);
-    }
+    });
 
     revalidatePath('/admin/users');
     revalidatePath(`/admin/users/${userId}`);
@@ -258,6 +295,11 @@ export async function deactivateUserAction(userId: string): Promise<ActionResult
   const accessCheck = await verifyAdminAccess();
   if (!accessCheck.authorized) {
     return { success: false, error: accessCheck.error };
+  }
+
+  const rateCheck = await checkActionRateLimit(accessCheck.userId);
+  if (!rateCheck.allowed) {
+    return { success: false, error: 'Too many requests. Please try again shortly.' };
   }
 
   // Prevent self-deactivation
@@ -285,12 +327,15 @@ export async function deactivateUserAction(userId: string): Promise<ActionResult
   try {
     await deactivateUser(userId);
 
-    // Log audit event
     await logAuditEvent(
       accessCheck.userId!,
       accessCheck.userEmail!,
       AUDIT_ACTIONS.USER_DEACTIVATED,
-      null
+      null,
+      {
+        beforeState: { email: user.email, isActive: true },
+        afterState: { email: user.email, isActive: false },
+      }
     );
 
     revalidatePath('/admin/users');
@@ -317,6 +362,11 @@ export async function reactivateUserAction(userId: string): Promise<ActionResult
     return { success: false, error: accessCheck.error };
   }
 
+  const rateCheck = await checkActionRateLimit(accessCheck.userId);
+  if (!rateCheck.allowed) {
+    return { success: false, error: 'Too many requests. Please try again shortly.' };
+  }
+
   // Verify user exists
   const user = await getUserById(userId);
   if (!user) {
@@ -326,12 +376,15 @@ export async function reactivateUserAction(userId: string): Promise<ActionResult
   try {
     await reactivateUser(userId);
 
-    // Log audit event
     await logAuditEvent(
       accessCheck.userId!,
       accessCheck.userEmail!,
       AUDIT_ACTIONS.USER_REACTIVATED,
-      null
+      null,
+      {
+        beforeState: { email: user.email, isActive: false },
+        afterState: { email: user.email, isActive: true },
+      }
     );
 
     revalidatePath('/admin/users');
@@ -356,6 +409,11 @@ export async function grantAdminRoleAction(userId: string): Promise<ActionResult
   const accessCheck = await verifyAdminAccess();
   if (!accessCheck.authorized) {
     return { success: false, error: accessCheck.error };
+  }
+
+  const rateCheck = await checkActionRateLimit(accessCheck.userId);
+  if (!rateCheck.allowed) {
+    return { success: false, error: 'Too many requests. Please try again shortly.' };
   }
 
   // Verify user exists
@@ -393,6 +451,11 @@ export async function revokeAdminRoleAction(userId: string): Promise<ActionResul
   const accessCheck = await verifyAdminAccess();
   if (!accessCheck.authorized) {
     return { success: false, error: accessCheck.error };
+  }
+
+  const rateCheck = await checkActionRateLimit(accessCheck.userId);
+  if (!rateCheck.allowed) {
+    return { success: false, error: 'Too many requests. Please try again shortly.' };
   }
 
   // Prevent self-demotion

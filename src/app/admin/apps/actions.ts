@@ -11,7 +11,9 @@ import {
   isSlugUnique,
   getAppById,
 } from '@/lib/db/apps';
+import { db } from '@/lib/db';
 import { logAuditEvent, AUDIT_ACTIONS } from '@/lib/db/audit-logs';
+import { checkActionRateLimit } from '@/lib/rate-limit';
 
 // Validation schemas
 const appSchema = z.object({
@@ -71,6 +73,11 @@ export async function createAppAction(formData: FormData): Promise<ActionResult>
     return { success: false, error: accessCheck.error };
   }
 
+  const rateCheck = await checkActionRateLimit(accessCheck.userId);
+  if (!rateCheck.allowed) {
+    return { success: false, error: 'Too many requests. Please try again shortly.' };
+  }
+
   const rawData = {
     name: formData.get('name') as string,
     slug: formData.get('slug') as string,
@@ -100,21 +107,32 @@ export async function createAppAction(formData: FormData): Promise<ActionResult>
   }
 
   try {
-    const app = await createApp({
-      name: result.data.name,
-      slug: result.data.slug,
-      description: result.data.description,
-      appUrl: result.data.appUrl,
-      iconUrl: result.data.iconUrl || null,
-    });
+    await db.transaction(async (tx) => {
+      const app = await createApp({
+        name: result.data.name,
+        slug: result.data.slug,
+        description: result.data.description,
+        appUrl: result.data.appUrl,
+        iconUrl: result.data.iconUrl || null,
+      }, tx);
 
-    // Log audit event
-    await logAuditEvent(
-      accessCheck.userId!,
-      accessCheck.userEmail!,
-      AUDIT_ACTIONS.APP_CREATED,
-      app.id
-    );
+      await logAuditEvent(
+        accessCheck.userId!,
+        accessCheck.userEmail!,
+        AUDIT_ACTIONS.APP_CREATED,
+        app.id,
+        {
+          tx,
+          afterState: {
+            name: app.name,
+            slug: app.slug,
+            description: app.description,
+            appUrl: app.appUrl,
+            iconUrl: app.iconUrl,
+          },
+        }
+      );
+    });
 
     revalidatePath('/admin/apps');
     revalidatePath('/admin');
@@ -134,6 +152,11 @@ export async function updateAppAction(
   const accessCheck = await verifyAdminAccess();
   if (!accessCheck.authorized) {
     return { success: false, error: accessCheck.error };
+  }
+
+  const rateCheck = await checkActionRateLimit(accessCheck.userId);
+  if (!rateCheck.allowed) {
+    return { success: false, error: 'Too many requests. Please try again shortly.' };
   }
 
   // Verify app exists
@@ -171,21 +194,41 @@ export async function updateAppAction(
   }
 
   try {
-    await updateApp(id, {
-      name: result.data.name,
-      slug: result.data.slug,
-      description: result.data.description,
-      appUrl: result.data.appUrl,
-      iconUrl: result.data.iconUrl || null,
-    });
+    const beforeState = {
+      name: existingApp.name,
+      slug: existingApp.slug,
+      description: existingApp.description,
+      appUrl: existingApp.appUrl,
+      iconUrl: existingApp.iconUrl,
+    };
 
-    // Log audit event
-    await logAuditEvent(
-      accessCheck.userId!,
-      accessCheck.userEmail!,
-      AUDIT_ACTIONS.APP_UPDATED,
-      id
-    );
+    await db.transaction(async (tx) => {
+      const updated = await updateApp(id, {
+        name: result.data.name,
+        slug: result.data.slug,
+        description: result.data.description,
+        appUrl: result.data.appUrl,
+        iconUrl: result.data.iconUrl || null,
+      }, tx);
+
+      await logAuditEvent(
+        accessCheck.userId!,
+        accessCheck.userEmail!,
+        AUDIT_ACTIONS.APP_UPDATED,
+        id,
+        {
+          tx,
+          beforeState,
+          afterState: updated ? {
+            name: updated.name,
+            slug: updated.slug,
+            description: updated.description,
+            appUrl: updated.appUrl,
+            iconUrl: updated.iconUrl,
+          } : null,
+        }
+      );
+    });
 
     revalidatePath('/admin/apps');
     revalidatePath('/admin');
@@ -204,6 +247,11 @@ export async function deleteAppAction(id: string): Promise<ActionResult> {
     return { success: false, error: accessCheck.error };
   }
 
+  const rateCheck = await checkActionRateLimit(accessCheck.userId);
+  if (!rateCheck.allowed) {
+    return { success: false, error: 'Too many requests. Please try again shortly.' };
+  }
+
   // Verify app exists
   const existingApp = await getAppById(id);
   if (!existingApp) {
@@ -211,18 +259,28 @@ export async function deleteAppAction(id: string): Promise<ActionResult> {
   }
 
   try {
-    const deleted = await deleteApp(id);
-    if (!deleted) {
-      return { success: false, error: 'Failed to delete app' };
-    }
+    const beforeState = {
+      name: existingApp.name,
+      slug: existingApp.slug,
+      description: existingApp.description,
+      appUrl: existingApp.appUrl,
+      iconUrl: existingApp.iconUrl,
+    };
 
-    // Log audit event (appId will be null since app is deleted, but we can log it anyway)
-    await logAuditEvent(
-      accessCheck.userId!,
-      accessCheck.userEmail!,
-      AUDIT_ACTIONS.APP_DELETED,
-      null // App no longer exists
-    );
+    await db.transaction(async (tx) => {
+      const deleted = await deleteApp(id, tx);
+      if (!deleted) {
+        throw new Error('Failed to delete app');
+      }
+
+      await logAuditEvent(
+        accessCheck.userId!,
+        accessCheck.userEmail!,
+        AUDIT_ACTIONS.APP_DELETED,
+        null,
+        { tx, beforeState }
+      );
+    });
 
     revalidatePath('/admin/apps');
     revalidatePath('/admin');

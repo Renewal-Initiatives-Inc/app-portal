@@ -52,6 +52,10 @@ function getActionDisplay(action: string): { label: string; variant: 'default' |
     user_deactivated: { label: 'User Deactivated', variant: 'destructive' },
     user_reactivated: { label: 'User Reactivated', variant: 'secondary' },
     permissions_updated: { label: 'Permissions Updated', variant: 'outline' },
+    employee_created: { label: 'Employee Created', variant: 'secondary' },
+    employee_updated: { label: 'Employee Updated', variant: 'secondary' },
+    employee_deactivated: { label: 'Employee Deactivated', variant: 'destructive' },
+    login_denied: { label: 'Login Denied', variant: 'destructive' },
   };
 
   return actionMap[action] || { label: action, variant: 'outline' };

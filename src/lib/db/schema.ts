@@ -7,6 +7,7 @@ import {
   varchar,
   integer,
   numeric,
+  jsonb,
   index,
 } from 'drizzle-orm/pg-core';
 
@@ -27,6 +28,8 @@ export const auditLogs = pgTable('audit_logs', {
   userEmail: text('user_email').notNull(),
   appId: uuid('app_id').references(() => apps.id),
   action: text('action').notNull(),
+  beforeState: jsonb('before_state').$type<Record<string, unknown> | null>(),
+  afterState: jsonb('after_state').$type<Record<string, unknown> | null>(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 

@@ -11,6 +11,23 @@ import {
   getEmployeeById,
   logPayrollChanges,
 } from '@/lib/db/employees';
+import { db } from '@/lib/db';
+import { logAuditEvent, AUDIT_ACTIONS } from '@/lib/db/audit-logs';
+import { checkActionRateLimit } from '@/lib/rate-limit';
+import type { Employee } from '@/lib/db/employees';
+
+/** Build a sanitized state snapshot for audit logs (excludes encrypted PII). */
+function employeeAuditState(emp: Partial<Employee>): Record<string, unknown> {
+  return {
+    name: emp.name,
+    email: emp.email,
+    isActive: emp.isActive,
+    compensationType: emp.compensationType,
+    workerType: emp.workerType,
+    payFrequency: emp.payFrequency,
+    exemptStatus: emp.exemptStatus,
+  };
+}
 
 export type ActionResult = {
   success: boolean;
@@ -94,6 +111,11 @@ export async function createEmployeeAction(
     return { success: false, error: accessCheck.error };
   }
 
+  const rateCheck = await checkActionRateLimit(accessCheck.userId);
+  if (!rateCheck.allowed) {
+    return { success: false, error: 'Too many requests. Please try again shortly.' };
+  }
+
   const rawData = Object.fromEntries(formData.entries());
 
   // Convert checkbox fields: FormData sends "on" or omits them
@@ -117,55 +139,65 @@ export async function createEmployeeAction(
   }
 
   try {
-    const employee = await createEmployee({
-      zitadelUserId: result.data.zitadelUserId,
-      name: result.data.name,
-      email: result.data.email,
-      isActive: true,
-      workerType: result.data.workerType,
-      payFrequency: result.data.payFrequency,
-      compensationType: result.data.compensationType,
-      annualSalary: result.data.annualSalary != null
-        ? String(result.data.annualSalary)
-        : null,
-      expectedAnnualHours: result.data.expectedAnnualHours ?? null,
-      exemptStatus: result.data.exemptStatus,
-      federalFilingStatus: result.data.federalFilingStatus,
-      federalAllowances: result.data.federalAllowances,
-      stateAllowances: result.data.stateAllowances,
-      additionalFederalWithholding: String(
-        result.data.additionalFederalWithholding
-      ),
-      additionalStateWithholding: String(
-        result.data.additionalStateWithholding
-      ),
-      isHeadOfHousehold: result.data.isHeadOfHousehold,
-      isBlind: result.data.isBlind,
-      spouseIsBlind: result.data.spouseIsBlind,
-      isOfficer: result.data.isOfficer,
-      officerTitle: result.data.officerTitle ?? null,
-      boardMember: result.data.boardMember,
-      avgHoursPerWeek: result.data.avgHoursPerWeek != null
-        ? String(result.data.avgHoursPerWeek)
-        : null,
-      employerHealthPremium: result.data.employerHealthPremium != null
-        ? String(result.data.employerHealthPremium)
-        : null,
-      employerRetirementContrib: result.data.employerRetirementContrib != null
-        ? String(result.data.employerRetirementContrib)
-        : null,
-      taxId: result.data.taxId ?? null,
-      stateTaxId: result.data.stateTaxId ?? null,
-      address: result.data.address ?? null,
-    });
+    await db.transaction(async (tx) => {
+      const employee = await createEmployee({
+        zitadelUserId: result.data.zitadelUserId,
+        name: result.data.name,
+        email: result.data.email,
+        isActive: true,
+        workerType: result.data.workerType,
+        payFrequency: result.data.payFrequency,
+        compensationType: result.data.compensationType,
+        annualSalary: result.data.annualSalary != null
+          ? String(result.data.annualSalary)
+          : null,
+        expectedAnnualHours: result.data.expectedAnnualHours ?? null,
+        exemptStatus: result.data.exemptStatus,
+        federalFilingStatus: result.data.federalFilingStatus,
+        federalAllowances: result.data.federalAllowances,
+        stateAllowances: result.data.stateAllowances,
+        additionalFederalWithholding: String(
+          result.data.additionalFederalWithholding
+        ),
+        additionalStateWithholding: String(
+          result.data.additionalStateWithholding
+        ),
+        isHeadOfHousehold: result.data.isHeadOfHousehold,
+        isBlind: result.data.isBlind,
+        spouseIsBlind: result.data.spouseIsBlind,
+        isOfficer: result.data.isOfficer,
+        officerTitle: result.data.officerTitle ?? null,
+        boardMember: result.data.boardMember,
+        avgHoursPerWeek: result.data.avgHoursPerWeek != null
+          ? String(result.data.avgHoursPerWeek)
+          : null,
+        employerHealthPremium: result.data.employerHealthPremium != null
+          ? String(result.data.employerHealthPremium)
+          : null,
+        employerRetirementContrib: result.data.employerRetirementContrib != null
+          ? String(result.data.employerRetirementContrib)
+          : null,
+        taxId: result.data.taxId ?? null,
+        stateTaxId: result.data.stateTaxId ?? null,
+        address: result.data.address ?? null,
+      }, tx);
 
-    // Audit log: all fields as new (empty old record)
-    await logPayrollChanges(
-      employee.zitadelUserId,
-      {},
-      employee,
-      accessCheck.userEmail!
-    );
+      await logPayrollChanges(
+        employee.zitadelUserId,
+        {},
+        employee,
+        accessCheck.userEmail!,
+        tx
+      );
+
+      await logAuditEvent(
+        accessCheck.userId!,
+        accessCheck.userEmail!,
+        AUDIT_ACTIONS.EMPLOYEE_CREATED,
+        null,
+        { tx, afterState: employeeAuditState(employee) }
+      );
+    });
 
     revalidatePath('/admin/employees');
     return { success: true };
@@ -182,6 +214,11 @@ export async function updateEmployeeAction(
   const accessCheck = await verifyAdminAccess();
   if (!accessCheck.authorized) {
     return { success: false, error: accessCheck.error };
+  }
+
+  const rateCheck = await checkActionRateLimit(accessCheck.userId);
+  if (!rateCheck.allowed) {
+    return { success: false, error: 'Too many requests. Please try again shortly.' };
   }
 
   const existing = await getEmployeeById(id);
@@ -211,54 +248,67 @@ export async function updateEmployeeAction(
   }
 
   try {
-    const updated = await updateEmployee(id, {
-      name: result.data.name,
-      email: result.data.email,
-      workerType: result.data.workerType,
-      payFrequency: result.data.payFrequency,
-      compensationType: result.data.compensationType,
-      annualSalary: result.data.annualSalary != null
-        ? String(result.data.annualSalary)
-        : null,
-      expectedAnnualHours: result.data.expectedAnnualHours ?? null,
-      exemptStatus: result.data.exemptStatus,
-      federalFilingStatus: result.data.federalFilingStatus,
-      federalAllowances: result.data.federalAllowances,
-      stateAllowances: result.data.stateAllowances,
-      additionalFederalWithholding: String(
-        result.data.additionalFederalWithholding
-      ),
-      additionalStateWithholding: String(
-        result.data.additionalStateWithholding
-      ),
-      isHeadOfHousehold: result.data.isHeadOfHousehold,
-      isBlind: result.data.isBlind,
-      spouseIsBlind: result.data.spouseIsBlind,
-      isOfficer: result.data.isOfficer,
-      officerTitle: result.data.officerTitle ?? null,
-      boardMember: result.data.boardMember,
-      avgHoursPerWeek: result.data.avgHoursPerWeek != null
-        ? String(result.data.avgHoursPerWeek)
-        : null,
-      employerHealthPremium: result.data.employerHealthPremium != null
-        ? String(result.data.employerHealthPremium)
-        : null,
-      employerRetirementContrib: result.data.employerRetirementContrib != null
-        ? String(result.data.employerRetirementContrib)
-        : null,
-      taxId: result.data.taxId ?? null,
-      stateTaxId: result.data.stateTaxId ?? null,
-      address: result.data.address ?? null,
-    });
+    const beforeState = employeeAuditState(existing);
 
-    if (updated) {
-      await logPayrollChanges(
-        existing.zitadelUserId,
-        existing,
-        updated,
-        accessCheck.userEmail!
-      );
-    }
+    await db.transaction(async (tx) => {
+      const updated = await updateEmployee(id, {
+        name: result.data.name,
+        email: result.data.email,
+        workerType: result.data.workerType,
+        payFrequency: result.data.payFrequency,
+        compensationType: result.data.compensationType,
+        annualSalary: result.data.annualSalary != null
+          ? String(result.data.annualSalary)
+          : null,
+        expectedAnnualHours: result.data.expectedAnnualHours ?? null,
+        exemptStatus: result.data.exemptStatus,
+        federalFilingStatus: result.data.federalFilingStatus,
+        federalAllowances: result.data.federalAllowances,
+        stateAllowances: result.data.stateAllowances,
+        additionalFederalWithholding: String(
+          result.data.additionalFederalWithholding
+        ),
+        additionalStateWithholding: String(
+          result.data.additionalStateWithholding
+        ),
+        isHeadOfHousehold: result.data.isHeadOfHousehold,
+        isBlind: result.data.isBlind,
+        spouseIsBlind: result.data.spouseIsBlind,
+        isOfficer: result.data.isOfficer,
+        officerTitle: result.data.officerTitle ?? null,
+        boardMember: result.data.boardMember,
+        avgHoursPerWeek: result.data.avgHoursPerWeek != null
+          ? String(result.data.avgHoursPerWeek)
+          : null,
+        employerHealthPremium: result.data.employerHealthPremium != null
+          ? String(result.data.employerHealthPremium)
+          : null,
+        employerRetirementContrib: result.data.employerRetirementContrib != null
+          ? String(result.data.employerRetirementContrib)
+          : null,
+        taxId: result.data.taxId ?? null,
+        stateTaxId: result.data.stateTaxId ?? null,
+        address: result.data.address ?? null,
+      }, tx);
+
+      if (updated) {
+        await logPayrollChanges(
+          existing.zitadelUserId,
+          existing,
+          updated,
+          accessCheck.userEmail!,
+          tx
+        );
+
+        await logAuditEvent(
+          accessCheck.userId!,
+          accessCheck.userEmail!,
+          AUDIT_ACTIONS.EMPLOYEE_UPDATED,
+          null,
+          { tx, beforeState, afterState: employeeAuditState(updated) }
+        );
+      }
+    });
 
     revalidatePath('/admin/employees');
     return { success: true };
@@ -276,22 +326,40 @@ export async function toggleEmployeeActiveAction(
     return { success: false, error: accessCheck.error };
   }
 
+  const rateCheck = await checkActionRateLimit(accessCheck.userId);
+  if (!rateCheck.allowed) {
+    return { success: false, error: 'Too many requests. Please try again shortly.' };
+  }
+
   const existing = await getEmployeeById(id);
   if (!existing) {
     return { success: false, error: 'Employee not found' };
   }
 
   try {
-    const updated = await setEmployeeActive(id, !existing.isActive);
+    const beforeState = employeeAuditState(existing);
 
-    if (updated) {
-      await logPayrollChanges(
-        existing.zitadelUserId,
-        existing,
-        updated,
-        accessCheck.userEmail!
-      );
-    }
+    await db.transaction(async (tx) => {
+      const updated = await setEmployeeActive(id, !existing.isActive, tx);
+
+      if (updated) {
+        await logPayrollChanges(
+          existing.zitadelUserId,
+          existing,
+          updated,
+          accessCheck.userEmail!,
+          tx
+        );
+
+        await logAuditEvent(
+          accessCheck.userId!,
+          accessCheck.userEmail!,
+          AUDIT_ACTIONS.EMPLOYEE_DEACTIVATED,
+          null,
+          { tx, beforeState, afterState: employeeAuditState(updated) }
+        );
+      }
+    });
 
     revalidatePath('/admin/employees');
     return { success: true };

@@ -2,18 +2,27 @@ import { put, del } from '@vercel/blob';
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { isAdmin } from '@/lib/permissions';
+import { validateMagicBytes } from '@/lib/upload-validation';
+import { checkApiRateLimit } from '@/lib/rate-limit';
 
 const ALLOWED_TYPES = [
   'image/png',
   'image/jpeg',
   'image/jpg',
   'image/webp',
-  'image/svg+xml',
 ];
 
 const MAX_SIZE = 1024 * 1024; // 1MB
 
 export async function POST(request: Request): Promise<NextResponse> {
+  const rateCheck = await checkApiRateLimit();
+  if (!rateCheck.allowed) {
+    return NextResponse.json(
+      { error: 'Too many requests. Please try again shortly.' },
+      { status: 429, headers: { 'Retry-After': String(rateCheck.retryAfter) } }
+    );
+  }
+
   // Verify admin access
   const session = await auth();
   if (!session) {
@@ -39,6 +48,15 @@ export async function POST(request: Request): Promise<NextResponse> {
         {
           error: `Invalid file type. Allowed types: ${ALLOWED_TYPES.join(', ')}`,
         },
+        { status: 400 }
+      );
+    }
+
+    // Validate file content matches claimed type (magic bytes)
+    const fileBuffer = await file.arrayBuffer();
+    if (!validateMagicBytes(fileBuffer, file.type)) {
+      return NextResponse.json(
+        { error: 'File content does not match its declared type' },
         { status: 400 }
       );
     }
@@ -72,6 +90,14 @@ export async function POST(request: Request): Promise<NextResponse> {
 }
 
 export async function DELETE(request: Request): Promise<NextResponse> {
+  const rateCheck = await checkApiRateLimit();
+  if (!rateCheck.allowed) {
+    return NextResponse.json(
+      { error: 'Too many requests. Please try again shortly.' },
+      { status: 429, headers: { 'Retry-After': String(rateCheck.retryAfter) } }
+    );
+  }
+
   // Verify admin access
   const session = await auth();
   if (!session) {
