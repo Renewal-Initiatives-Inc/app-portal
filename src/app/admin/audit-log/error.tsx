@@ -30,17 +30,13 @@ export default function AuditLogError({
       </div>
 
       <div className="rounded-md border border-destructive/50 bg-destructive/10 p-4">
-        <h2 className="font-semibold text-destructive mb-2">Error Details</h2>
-        <pre className="text-sm text-destructive/80 whitespace-pre-wrap break-words mb-4">
-          {error.message}
-        </pre>
-        {error.stack && (
-          <details className="text-xs text-muted-foreground">
-            <summary className="cursor-pointer">Stack trace</summary>
-            <pre className="mt-2 whitespace-pre-wrap break-words">
-              {error.stack}
-            </pre>
-          </details>
+        <p className="text-sm text-destructive/80">
+          Something went wrong loading the audit log. Please try again or contact support if the issue persists.
+        </p>
+        {error.digest && (
+          <p className="text-xs text-muted-foreground mt-2">
+            Error reference: {error.digest}
+          </p>
         )}
       </div>
 
