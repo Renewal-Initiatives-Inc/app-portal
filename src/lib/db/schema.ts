@@ -82,6 +82,7 @@ export const employees = pgTable(
     spouseIsBlind: boolean('spouse_is_blind').notNull().default(false),
 
     // Encrypted PII
+    dateOfBirth: text('date_of_birth'),
     taxId: text('tax_id'),
     stateTaxId: text('state_tax_id'),
     address: text('address'),
