@@ -55,6 +55,7 @@ export function EmployeeForm({ employee, mode }: EmployeeFormProps) {
   const [zitadelUserId, setZitadelUserId] = useState(employee?.zitadelUserId || '');
   const [name, setName] = useState(employee?.name || '');
   const [email, setEmail] = useState(employee?.email || '');
+  const [dateOfBirth, setDateOfBirth] = useState(employee?.dateOfBirth || '');
   const [workerType, setWorkerType] = useState(employee?.workerType || 'W-2');
   const [payFrequency, setPayFrequency] = useState(employee?.payFrequency || 'biweekly');
 
@@ -154,6 +155,7 @@ export function EmployeeForm({ employee, mode }: EmployeeFormProps) {
       formData.append('avgHoursPerWeek', avgHoursPerWeek);
       formData.append('employerHealthPremium', employerHealthPremium);
       formData.append('employerRetirementContrib', employerRetirementContrib);
+      formData.append('dateOfBirth', dateOfBirth);
       formData.append('taxId', taxId);
       formData.append('stateTaxId', stateTaxId);
       formData.append('address', address);
@@ -295,6 +297,22 @@ export function EmployeeForm({ employee, mode }: EmployeeFormProps) {
                 />
                 {errors.email && (
                   <p className="text-sm text-destructive">{errors.email[0]}</p>
+                )}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="dateOfBirth">Date of Birth</Label>
+                <Input
+                  id="dateOfBirth"
+                  type="date"
+                  value={dateOfBirth}
+                  onChange={(e) => setDateOfBirth(e.target.value)}
+                  data-testid="dob-input"
+                />
+                {errors.dateOfBirth && (
+                  <p className="text-sm text-destructive">{errors.dateOfBirth[0]}</p>
                 )}
               </div>
             </div>

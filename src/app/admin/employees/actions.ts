@@ -92,6 +92,8 @@ const createEmployeeSchema = z.object({
   employerHealthPremium: z.coerce.number().min(0).optional().nullable(),
   employerRetirementContrib: z.coerce.number().min(0).optional().nullable(),
   // PII
+  dateOfBirth: z.string().max(10).optional().nullable()
+    .transform(v => v === '' ? null : v),
   taxId: z.string().max(20).optional().nullable(),
   stateTaxId: z.string().max(50).optional().nullable(),
   address: z.string().max(500).optional().nullable(),
@@ -177,6 +179,7 @@ export async function createEmployeeAction(
         employerRetirementContrib: result.data.employerRetirementContrib != null
           ? String(result.data.employerRetirementContrib)
           : null,
+        dateOfBirth: result.data.dateOfBirth ?? null,
         taxId: result.data.taxId ?? null,
         stateTaxId: result.data.stateTaxId ?? null,
         address: result.data.address ?? null,
@@ -286,6 +289,7 @@ export async function updateEmployeeAction(
         employerRetirementContrib: result.data.employerRetirementContrib != null
           ? String(result.data.employerRetirementContrib)
           : null,
+        dateOfBirth: result.data.dateOfBirth ?? null,
         taxId: result.data.taxId ?? null,
         stateTaxId: result.data.stateTaxId ?? null,
         address: result.data.address ?? null,

@@ -8,13 +8,13 @@ export type Employee = typeof employees.$inferSelect;
 export type NewEmployee = typeof employees.$inferInsert;
 
 /** PII fields that are encrypted at rest using AES-256-GCM. */
-const PII_FIELDS = ['taxId', 'stateTaxId', 'address'] as const;
+const PII_FIELDS = ['dateOfBirth', 'taxId', 'stateTaxId', 'address'] as const;
 
 /**
  * Encrypt PII fields before writing to the database.
  * Null/undefined values pass through unchanged.
  */
-function encryptPIIFields<T extends Partial<Pick<Employee, 'taxId' | 'stateTaxId' | 'address'>>>(
+function encryptPIIFields<T extends Partial<Pick<Employee, 'dateOfBirth' | 'taxId' | 'stateTaxId' | 'address'>>>(
   data: T
 ): T {
   const result = { ...data };
@@ -30,7 +30,7 @@ function encryptPIIFields<T extends Partial<Pick<Employee, 'taxId' | 'stateTaxId
  * Decrypt PII fields after reading from the database.
  * Null values and plaintext values (migration not yet run) pass through unchanged.
  */
-function decryptPIIFields<T extends Partial<Pick<Employee, 'taxId' | 'stateTaxId' | 'address'>>>(
+function decryptPIIFields<T extends Partial<Pick<Employee, 'dateOfBirth' | 'taxId' | 'stateTaxId' | 'address'>>>(
   data: T
 ): T {
   const result = { ...data };
